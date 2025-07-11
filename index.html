@@ -41,84 +41,96 @@
     </style>
   </head>
   <body class="p-4">
+    <div class="container-fluid my-2">
+      <h1 class="mb-4">BootstrapTreeTable</h1>
+      <h2>Tree Table Example</h2>
+    </div>
     <div class="container-fluid" id="suchfeld"></div>
     <div class="container-fluid">
       <table class="table table-bordered" id="treeTable">
         <thead class="table-light">
           <tr>
             <th style="width: 60px"></th>
-            <th>Bezeichnung</th>
-            <th>Wert</th>
+            <th>Label</th>
+            <th>Value</th>
           </tr>
         </thead>
         <tbody>
           <tr class="level-0">
             <td></td>
-            <td>Firma A</td>
-            <td>Wert A</td>
+            <td>Company Alpha</td>
+            <td>Zurich Office</td>
           </tr>
           <tr class="level-1">
             <td></td>
-            <td>Abteilung A1</td>
-            <td>Marketing</td>
+            <td>Department: Sales</td>
+            <td>2024 Revenue: $2M</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Leiter</td>
-            <td>Max Mustermann</td>
+            <td>Team: Inside Sales</td>
+            <td>Lead: Emily Clark</td>
+          </tr>
+          <tr class="level-3">
+            <td></td>
+            <td>Member</td>
+            <td>John Smith</td>
+          </tr>
+          <tr class="level-3">
+            <td></td>
+            <td>Member</td>
+            <td>Sarah Lee</td>
+          </tr>
+          <tr class="level-2">
+            <td></td>
+            <td>Team: Field Sales</td>
+            <td>Lead: Michael Brown</td>
           </tr>
           <tr class="level-1">
             <td></td>
-            <td>Abteilung A2</td>
-            <td>Vertrieb</td>
+            <td>Department: Marketing</td>
+            <td>Campaigns: 12</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Innendienst</td>
-            <td>Anna Beispiel</td>
-          </tr>
-          <tr class="level-2">
-            <td></td>
-            <td>Aussendienst</td>
-            <td>Karl Käufer</td>
+            <td>Manager</td>
+            <td>Jessica Turner</td>
           </tr>
           <tr class="level-0">
             <td></td>
-            <td>Firma B</td>
-            <td>Wert B</td>
+            <td>Company Beta</td>
+            <td>London Office</td>
           </tr>
           <tr class="level-1">
             <td></td>
-            <td>Abteilung B1</td>
-            <td>Forschung</td>
+            <td>Department: Research</td>
+            <td>Focus: AI & Robotics</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Spezialgebiet</td>
-            <td>Biologie</td>
-          </tr>
-          <tr class="level-2">
-            <td></td>
-            <td>Laborteam</td>
-            <td>Dr. Eva Test</td>
+            <td>Lab Team</td>
+            <td>Supervisor: Dr. Alan Grant</td>
           </tr>
           <tr class="level-3">
             <td></td>
-            <td>Hilfe 1</td>
-            <td>Hunde Bello</td>
+            <td>Researcher</td>
+            <td>Dr. Ellie Sattler</td>
           </tr>
           <tr class="level-4">
             <td></td>
-            <td>Hilfe der Hilfe 1</td>
-            <td>Bellos Knochen</td>
+            <td>Assistant</td>
+            <td>Tim Murphy</td>
           </tr>
           <tr class="level-3">
             <td></td>
-            <td>Hilfe 2</td>
-            <td>Hunde Wuf</td>
+            <td>Researcher</td>
+            <td>Ian Malcolm</td>
           </tr>
         </tbody>
       </table>
+    </div>
+    <div class="container-fluid mt-5 mb-2">
+      <h2>Tree Table Example 2</h2>
     </div>
     <div class="container-fluid" id="suchfeld3"></div>
     <div class="container-fluid">
@@ -126,75 +138,70 @@
         <thead class="table-light">
           <tr>
             <th style="width: 60px"></th>
-            <th>Bezeichnung</th>
-            <th>Wert</th>
+            <th>Label</th>
+            <th>Value</th>
           </tr>
         </thead>
         <tbody>
           <tr class="level-0">
             <td></td>
-            <td>Firma A</td>
-            <td>Wert A</td>
+            <td>Company Alpha</td>
+            <td>Zurich Office</td>
           </tr>
           <tr class="level-1">
             <td></td>
-            <td>Abteilung A1</td>
-            <td>Marketing</td>
+            <td>Department: Sales</td>
+            <td>2024 Revenue: $2M</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Leiter</td>
-            <td>Max Mustermann</td>
+            <td>Team: Inside Sales</td>
+            <td>Lead: Emily Clark</td>
           </tr>
           <tr class="level-1">
             <td></td>
-            <td>Abteilung A2</td>
-            <td>Vertrieb</td>
+            <td>Department: Marketing</td>
+            <td>Campaigns: 12</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Innendienst</td>
-            <td>Anna Beispiel</td>
+            <td>Manager</td>
+            <td>Jessica Turner</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Aussendienst</td>
-            <td>Karl Käufer</td>
+            <td>Specialist</td>
+            <td>Peter Schneider</td>
           </tr>
           <tr class="level-0">
             <td></td>
-            <td>Firma B</td>
-            <td>Wert B</td>
+            <td>Company Beta</td>
+            <td>London Office</td>
           </tr>
           <tr class="level-1">
             <td></td>
-            <td>Abteilung B1</td>
-            <td>Forschung</td>
+            <td>Department: Research</td>
+            <td>Focus: AI & Robotics</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Spezialgebiet</td>
-            <td>Biologie</td>
+            <td>Lab Team</td>
+            <td>Supervisor: Dr. Alan Grant</td>
           </tr>
           <tr class="level-2">
             <td></td>
-            <td>Laborteam</td>
-            <td>Dr. Eva Test</td>
+            <td>Assistant</td>
+            <td>Tim Murphy</td>
           </tr>
           <tr class="level-3">
             <td></td>
-            <td>Hilfe 1</td>
-            <td>Hunde Bello</td>
-          </tr>
-          <tr class="level-4">
-            <td></td>
-            <td>Hilfe der Hilfe 1</td>
-            <td>Bellos Knochen</td>
+            <td>Intern</td>
+            <td>Lex Murphy</td>
           </tr>
           <tr class="level-3">
             <td></td>
-            <td>Hilfe 2</td>
-            <td>Hunde Wuf</td>
+            <td>Researcher</td>
+            <td>Ian Malcolm</td>
           </tr>
         </tbody>
       </table>
