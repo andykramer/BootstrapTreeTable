@@ -1,13 +1,13 @@
 # BootstrapTreeTable
 
 **BootstrapTreeTable** is a flexible, modern JavaScript plugin for hierarchical tables built with Bootstrap 5.  
-It enables collapsible rows, multi-level hierarchy, a global toggle-all button, live search with highlighting, and full styling/customization – perfect for organization structures, product trees, menus, and more.
+It enables collapsible rows, multi-level hierarchy, a global toggle-all button, live search with highlighting, and full styling/customization - perfect for organization structures, product trees, menus, and more.
 
 ---
 
 ## Features
 
-- **Hierarchical tables** (unlimited levels using `level-x` classes)
+- **Hierarchical tables** (unlimited levels using `level-x` classes or `data-level="x"`)
 - **Collapsible rows**
 - **Global Toggle-All button** in the table header (optionally hideable)
 - **Search field** (custom position, highlighting, reset, ESC support)
@@ -15,7 +15,7 @@ It enables collapsible rows, multi-level hierarchy, a global toggle-all button, 
 - **Restrict search to certain levels** (`searchMaxLevel`)
 - **Supports multiple tables/instances** per page
 - **Fully themeable & customizable** via utility/your own classes
-- **i18n** – all labels and texts can be translated
+- **i18n** - all labels and texts can be translated
 
 ---
 
@@ -44,6 +44,8 @@ It enables collapsible rows, multi-level hierarchy, a global toggle-all button, 
 <script src="BootstrapTreeTable.js"></script>
 ```
 
+---
+
 ## BootstrapTreeTable Options
 
 ### Main Options
@@ -56,6 +58,8 @@ It enables collapsible rows, multi-level hierarchy, a global toggle-all button, 
 | `highlightSearchMatches` | Boolean          | `true`             | Highlight matches in search results.                                                        |
 | `searchHighlightColor`   | String           | `"#ffff8b"`        | Background color for highlighting search matches.                                           |
 | `searchMaxLevel`         | Number or `null` | `null`             | Maximum level to search (e.g. `1` for `level-0` and `level-1` only, `null` for all levels). |
+| `startExpanded`          | Boolean          | `false`            | Whether all rows should start expanded.                                                     |
+| `rememberState`          | Boolean          | `false`            | Whether to remember expanded/collapsed state in `localStorage`.                             |
 
 ---
 
@@ -68,8 +72,8 @@ It enables collapsible rows, multi-level hierarchy, a global toggle-all button, 
 | `searchWrapperStyle` | `"max-width:400px;"`                                                     | Additional CSS style for the search wrapper (string).                              |
 | `resetBtn`           | `"btn-sm position-absolute top-50 end-0 translate-middle-y me-2 d-none"` | Extra classes for the reset button (always includes `btn`).                        |
 | `noResults`          | `"alert alert-warning small d-none mt-2"`                                | Extra classes for the "no results" message (always includes `table-search-empty`). |
-| `toggleBtn`          | `"btn-primary"`                                                          | Extra classes for row toggle buttons (always includes `btn toggle-btn`).           |
-| `toggleAllBtn`       | `"btn-outline-secondary"`                                                | Extra classes for the Toggle-All button (always includes `btn`).                   |
+| `toggleRowBtn`       | `"btn-primary btn-sm"`                                                   | Extra classes for row toggle buttons (always includes `btn toggle-row-btn`).       |
+| `toggleAllBtn`       | `"btn-outline-secondary btn-sm"`                                         | Extra classes for the Toggle-All button (always includes `btn`).                   |
 
 ---
 
@@ -86,12 +90,13 @@ It enables collapsible rows, multi-level hierarchy, a global toggle-all button, 
 
 ### Icon Classes (`iconClasses`)
 
-| Key              | Default value                | Description                                        |
-| ---------------- | ---------------------------- | -------------------------------------------------- |
-| `toggleRow`      | `"fa-solid fa-chevron-down"` | Icon for row toggle button                         |
-| `toggleAllOpen`  | `"fa-solid fa-plus"`         | Icon for Toggle-All button when table is collapsed |
-| `toggleAllClose` | `"fa-solid fa-minus"`        | Icon for Toggle-All button when table is expanded  |
-| `reset`          | `"fa-solid fa-xmark"`        | Icon for the reset/clear search button             |
+| Key              | Default value                       | Description                                        |
+| ---------------- | ----------------------------------- | -------------------------------------------------- |
+| `toggleRowOpen`  | `"fa-solid fa-chevron-right fa-fw"` | Icon for row toggle button when open               |
+| `toggleRowClose` | `"fa-solid fa-chevron-up fa-fw"`    | Icon for row toggle button when closed             |
+| `toggleAllOpen`  | `"fa-solid fa-plus fa-fw"`          | Icon for Toggle-All button when table is collapsed |
+| `toggleAllClose` | `"fa-solid fa-minus fa-fw"`         | Icon for Toggle-All button when table is expanded  |
+| `reset`          | `"fa-solid fa-xmark"`               | Icon for the reset/clear search button             |
 
 ---
 
@@ -105,6 +110,8 @@ BootstrapTreeTable.init({
   searchMaxLevel: 2,
   highlightSearchMatches: true,
   searchHighlightColor: "#ffe066",
+  startExpanded: false,
+  rememberState: true,
 
   classes: {
     searchInput: "form-control-lg custom-search",
@@ -112,8 +119,16 @@ BootstrapTreeTable.init({
     searchWrapperStyle: "max-width:600px;background:#f8f9fa;",
     resetBtn: "btn-outline-danger",
     noResults: "alert-info my-3",
-    toggleBtn: "btn-outline-dark",
-    toggleAllBtn: "btn-secondary",
+    toggleRowBtn: "btn-outline-dark btn-sm",
+    toggleAllBtn: "btn-secondary btn-sm",
+  },
+
+  iconClasses: {
+    toggleRowOpen: "fa-solid fa-chevron-right fa-fw",
+    toggleRowClose: "fa-solid fa-chevron-up fa-fw",
+    toggleAllOpen: "fa-solid fa-plus fa-fw",
+    toggleAllClose: "fa-solid fa-minus fa-fw",
+    reset: "fa-solid fa-xmark",
   },
 
   i18n: {
@@ -124,3 +139,5 @@ BootstrapTreeTable.init({
   },
 });
 ```
+
+---

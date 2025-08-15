@@ -12,17 +12,6 @@
       rel="stylesheet"
     /> -->
     <style>
-      .toggle-btn svg,
-      .toggle-btn i {
-        transition: transform 0.3s ease;
-      }
-      .rotate-icon-45 {
-        transform: rotate(45deg);
-      }
-      .rotate-icon-90 {
-        transform: rotate(-90deg);
-      }
-
       .level-0 td {
         background: #fff;
       }
@@ -215,7 +204,7 @@
       src="https://kit.fontawesome.com/cc9b9b2923.js"
       crossorigin="anonymous"
     ></script>
-    <script src="/script/BootstrapTreeTableV3.js"></script>
+    <script src="/script/BootstrapTreeTable.min.js"></script>
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         // Tabelle 1
@@ -244,7 +233,7 @@
             resetBtn:
               "btn-sm position-absolute top-50 end-0 translate-middle-y me-2 d-none",
             noResults: "alert alert-warning small d-none mt-2",
-            toggleBtn: "btn-sm",
+            toggleRowBtn: "btn-sm",
             toggleAllBtn: "btn-sm",
           },
           iconClasses: {
