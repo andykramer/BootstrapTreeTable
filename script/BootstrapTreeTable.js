@@ -10,7 +10,7 @@ class BootstrapTreeTable {
     toggleColumnIndex: 0,
     startExpanded: false,
     rememberState: false,
-    restorePreSearchStateOnClear: true,
+    restorePreSearchStateOnClear: false,
     classes: {
       searchInput: "pe-5",
       searchWrapper: "mb-3 position-relative",

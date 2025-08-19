@@ -50,18 +50,18 @@ It enables collapsible rows, multi-level hierarchy, a global toggle-all button, 
 
 ### Main Options
 
-| Option                   | Type             | Default            | Description                                                                                 |
-| ------------------------ | ---------------- | ------------------ | ------------------------------------------------------------------------------------------- |
-| `tableSelectorId`        | String           | `"hierarchyTable"` | The ID of your table (without `#`). Required.                                               |
-| `searchContainerId`      | String           | `null`             | The ID of the container for the search field (without `#`). Optional.                       |
-| `showToggleAllButton`    | Boolean          | `true`             | Show the Toggle-All button in the table header.                                             |
-| `highlightSearchMatches` | Boolean          | `true`             | Highlight matches in search results.                                                        |
-| `searchHighlightColor`   | String           | `"#ffff8b"`        | Background color for highlighting search matches.                                           |
-| `searchMaxLevel`         | Number or `null` | `null`             | Maximum level to search (e.g. `1` for `level-0` and `level-1` only, `null` for all levels). |
-| `startExpanded`          | Boolean          | `false`            | Whether all rows should start expanded.                                                     |
-| `rememberState`          | Boolean          | `false`            | Whether to remember expanded/collapsed state in `localStorage`.                             |
-
----
+| Option                         | Type             | Default       | Description                                                                                              |
+| ------------------------------ | ---------------- | ------------- | -------------------------------------------------------------------------------------------------------- |
+| `tableSelectorId`              | String           | `"treeTable"` | The ID of your table (without `#`). Required.                                                            |
+| `searchContainerId`            | String or `null` | `null`        | The ID of the container for the search field (without `#`). Optional.                                    |
+| `showToggleAllButton`          | Boolean          | `true`        | Show the Toggle-All button in the table header.                                                          |
+| `highlightSearchMatches`       | Boolean          | `true`        | Highlight matches in search results.                                                                     |
+| `searchHighlightColor`         | String           | `"#ffff8b"`   | Background color for highlighting search matches.                                                        |
+| `searchMaxLevel`               | Number or `null` | `null`        | Maximum level to search (e.g. `1` for `level-0` and `level-1` only, `null` for all levels).              |
+| `toggleColumnIndex`            | Number           | `0`           | Column index where the row toggle button should be placed.                                               |
+| `startExpanded`                | Boolean          | `false`       | Expand all rows at start (`true`) or collapse (`false`).                                                 |
+| `rememberState`                | Boolean          | `false`       | Persist expanded/collapsed state in `localStorage`.                                                      |
+| `restorePreSearchStateOnClear` | Boolean          | `false`       | If `true`, restores the state before search when search is cleared. If `false`, resets to default state. |
 
 ### Styling Classes (`classes`)
 
@@ -112,6 +112,7 @@ BootstrapTreeTable.init({
   searchHighlightColor: "#ffe066",
   startExpanded: false,
   rememberState: true,
+  restorePreSearchStateOnClear: false,
 
   classes: {
     searchInput: "form-control-lg custom-search",
