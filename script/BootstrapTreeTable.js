@@ -1,7 +1,6 @@
-(function (window) {
-  let treeTableInstanceCount = 0;
-
-  const DEFAULTS = {
+class BootstrapTreeTable {
+  //  Default options
+  static DEFAULTS = {
     tableSelectorId: "treeTable",
     searchContainerId: null,
     showToggleAllButton: true,
@@ -11,6 +10,7 @@
     toggleColumnIndex: 0,
     startExpanded: false,
     rememberState: false,
+    restorePreSearchStateOnClear: true,
     classes: {
       searchInput: "pe-5",
       searchWrapper: "mb-3 position-relative",
@@ -22,21 +22,66 @@
       toggleAllBtn: "btn-outline-secondary btn-sm",
     },
     iconClasses: {
-      toggleRowOpen: "fa-solid fa-chevron-right fa-fw",
-      toggleRowClose: "fa-solid fa-chevron-up fa-fw",
+      toggleRowOpen: "fa-solid fa-chevron-up fa-fw",
+      toggleRowClose: "fa-solid fa-chevron-down fa-fw",
       toggleAllOpen: "fa-solid fa-plus fa-fw",
       toggleAllClose: "fa-solid fa-minus fa-fw",
       reset: "fa-solid fa-xmark",
     },
     i18n: {
-      searchPlaceholder: "In allen Ebenen suchen...",
-      searchResetAria: "Zurücksetzen",
-      toggleAllBtnTitle: "Alle ein-/ausklappen",
-      noResults: "Keine Ergebnisse gefunden",
+      searchPlaceholder: "Search all levels...",
+      searchResetAria: "Reset",
+      toggleAllBtnTitle: "Expand/collapse all",
+      noResults: "No results found",
     },
   };
 
-  function mergeOptions(defaults, options) {
+  //  Constructor
+  constructor(selectorOrElement, userOptions = {}) {
+    this.options = this._mergeOptions(BootstrapTreeTable.DEFAULTS, userOptions);
+    this.table = this._resolveTable(selectorOrElement);
+    if (!this.table) {
+      console.error("BootstrapTreeTable: Table element not found.");
+      return;
+    }
+
+    if (this.table.id) {
+      this.storageKey = `btt-state:${this.table.id}`;
+    } else {
+      const allTables = Array.from(document.querySelectorAll("table"));
+      const idx = allTables.indexOf(this.table);
+      this.storageKey = `btt-state:table-${idx}`;
+    }
+
+    this.rows = Array.from(this.table.querySelectorAll("tr"));
+    this.searchInput = null;
+    this.resetBtn = null;
+    this.noResultsDiv = null;
+    this.toggleAllBtn = null;
+
+    this._preSearchSnapshot = null;
+    this._hadSnapshotThisSearch = false;
+
+    this._init();
+  }
+
+  //  Initialize table
+  _init() {
+    this._cacheCellHtml();
+    this._initVisibility();
+    this._ensureToggleButtons();
+    this._setupSearchUI();
+    this._setupToggleAllBtn();
+
+    if (!this._restoreState()) {
+      this._updateAllToggleButtonStates();
+      this._updateToggleAllBtnIcon();
+    }
+    this._setupRowClickHandler();
+  }
+
+  //  Merge user options with defaults
+  _mergeOptions(defaults, options) {
     const out = { ...defaults };
     for (const key in options || {}) {
       if (
@@ -44,7 +89,7 @@
         options[key] !== null &&
         !Array.isArray(options[key])
       ) {
-        out[key] = mergeOptions(defaults[key] || {}, options[key]);
+        out[key] = this._mergeOptions(defaults[key] || {}, options[key]);
       } else {
         out[key] = options[key];
       }
@@ -52,487 +97,411 @@
     return out;
   }
 
-  function debounce(fn, wait = 200) {
-    let t;
-    return (...args) => {
-      clearTimeout(t);
-      t = setTimeout(() => fn(...args), wait);
-    };
+  //  Resolve table element
+  _resolveTable(sel) {
+    if (typeof sel === "string") {
+      return document.querySelector(sel.startsWith("#") ? sel : `#${sel}`);
+    }
+    return sel instanceof HTMLElement ? sel : null;
   }
 
-  // Update FontAwesome icon classes
-  function updateFAIcon(element, openClasses, closeClasses, isCloseState) {
-    if (!element) return;
-
-    const openTokens = String(openClasses || "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-
-    const closeTokens = String(closeClasses || "")
-      .trim()
-      .split(/\s+/)
-      .filter(Boolean);
-
-    element.classList.remove(...openTokens, ...closeTokens);
-    element.classList.add(...(isCloseState ? closeTokens : openTokens));
+  //  Get hierarchy level of a row
+  _getLevel(tr) {
+    const match = Array.from(tr.classList).find((c) => c.startsWith("level-"));
+    return match ? parseInt(match.replace("level-", ""), 10) : 0;
   }
 
-  function init(userOptions = {}) {
-    const options = mergeOptions(DEFAULTS, userOptions);
-    const tableSelector = options.tableSelectorId.startsWith("#")
-      ? options.tableSelectorId
-      : "#" + options.tableSelectorId;
-    const table = document.querySelector(tableSelector);
-    if (!table) return;
+  //  Check if row is a data row
+  _isDataRow(tr) {
+    return (
+      tr.closest("tbody") &&
+      Array.from(tr.classList).some((c) => c.startsWith("level-"))
+    );
+  }
 
-    const instanceId = ++treeTableInstanceCount;
-    const rows = Array.from(table.querySelectorAll("tr"));
-    const storageKey = `btt-state:${options.tableSelectorId}:${instanceId}`;
+  //  Set row visibility
+  _setVisible(tr, visible) {
+    tr.dataset.visible = visible ? "true" : "false";
+    tr.style.display = visible ? "" : "none";
+  }
 
-    // Helper functions
-    function getLevel(tr) {
-      const match = Array.from(tr.classList).find((c) =>
-        c.startsWith("level-")
-      );
-      return match ? parseInt(match.replace("level-", ""), 10) : 0;
-    }
-    function isDataRow(tr) {
-      return (
-        tr.closest("tbody") &&
-        Array.from(tr.classList).some((c) => c.startsWith("level-"))
-      );
-    }
-    function hasChild(tr, idx) {
-      const thisLevel = getLevel(tr);
-      const next = rows[idx + 1];
-      return !!(next && getLevel(next) > thisLevel);
-    }
-    function setVisible(tr, visible) {
-      tr.dataset.visible = visible ? "true" : "false";
-      tr.style.display = visible ? "" : "none";
-    }
-
-    // Cache original HTML for highlighting
-    function cacheCellHtml() {
-      rows.forEach((tr) => {
-        if (!isDataRow(tr)) return;
-        Array.from(tr.cells).forEach((td) => {
-          if (!td.hasAttribute("data-orig-html")) {
-            td.setAttribute("data-orig-html", td.innerHTML);
-          }
-        });
-      });
-    }
-    function restoreCellHtml(tr) {
+  //  Cache original cell HTML for search restore
+  _cacheCellHtml() {
+    this.rows.forEach((tr) => {
+      if (!this._isDataRow(tr)) return;
       Array.from(tr.cells).forEach((td) => {
-        const orig = td.getAttribute("data-orig-html");
-        if (orig !== null) td.innerHTML = orig;
-      });
-    }
-
-    // Insert toggleAllButton
-    let toggleAllBtn = null;
-    if (options.showToggleAllButton) {
-      const th = table.querySelector("thead tr th");
-      if (th && !th.querySelector("#toggleAll" + instanceId)) {
-        const btn = document.createElement("button");
-        btn.id = "toggleAll" + instanceId;
-        btn.className = "btn " + (options.classes.toggleAllBtn || "");
-        btn.title = options.i18n.toggleAllBtnTitle;
-        btn.innerHTML = `<i id="toggleAllIcon${instanceId}" class="${options.iconClasses.toggleAllOpen}"></i>`;
-        th.appendChild(btn);
-      }
-      toggleAllBtn = document.getElementById("toggleAll" + instanceId);
-    }
-
-    // Insert search UI
-    let searchInput, resetBtn;
-    const tableSearchId = "tableSearch" + instanceId;
-    const resetSearchId = "resetSearch" + instanceId;
-    const searchContainerId = options.searchContainerId
-      ? options.searchContainerId.startsWith("#")
-        ? options.searchContainerId.slice(1)
-        : options.searchContainerId
-      : null;
-
-    if (searchContainerId && document.getElementById(searchContainerId)) {
-      if (!document.getElementById(tableSearchId)) {
-        const searchDiv = document.createElement("div");
-        searchDiv.className =
-          "position-relative " + (options.classes.searchWrapper || "");
-        searchDiv.style.cssText = options.classes.searchWrapperStyle || "";
-        searchDiv.innerHTML = `
-          <input type="text" id="${tableSearchId}" class="form-control ${
-          options.classes.searchInput || ""
-        }" placeholder="${options.i18n.searchPlaceholder}"/>
-          <button id="${resetSearchId}" type="button" class="btn ${
-          options.classes.resetBtn || ""
-        }" style="z-index:2" aria-label="${options.i18n.searchResetAria}">
-            <i class="${options.iconClasses.reset}"></i>
-          </button>
-        `;
-        document.getElementById(searchContainerId).appendChild(searchDiv);
-      }
-      searchInput = document.getElementById(tableSearchId);
-      resetBtn = document.getElementById(resetSearchId);
-    }
-
-    const tableSearchEmptyId = "tableSearchEmpty" + instanceId;
-    if (!document.getElementById(tableSearchEmptyId)) {
-      const emptyDiv = document.createElement("div");
-      emptyDiv.id = tableSearchEmptyId;
-      emptyDiv.className =
-        "table-search-empty " + (options.classes.noResults || "");
-      emptyDiv.textContent = options.i18n.noResults;
-      table.after(emptyDiv);
-    }
-    const searchEmptyMsg = document.getElementById(tableSearchEmptyId);
-
-    // Insert toggle buttons rows
-    function ensureToggleButtons() {
-      rows.forEach((tr, idx) => {
-        if (!isDataRow(tr) || !hasChild(tr, idx)) return;
-        const td = tr.cells[options.toggleColumnIndex] || tr.cells[0];
-        if (!td) return;
-        if (!td.querySelector(".toggle-row-btn")) {
-          const btn = document.createElement("button");
-          btn.type = "button";
-          btn.className =
-            "btn toggle-row-btn " + (options.classes.toggleRowBtn || "");
-          btn.setAttribute("data-open", "false");
-          btn.setAttribute("aria-expanded", "false");
-          btn.setAttribute("aria-label", "Toggle row");
-          btn.innerHTML = `<i class="${options.iconClasses.toggleRowClose}"></i>`;
-
-          const wrapper = document.createElement("span");
-          while (td.firstChild) wrapper.appendChild(td.firstChild);
-          td.appendChild(btn);
-          td.appendChild(wrapper);
-          td.style.whiteSpace = "nowrap";
-          td.classList.add("btt-cell");
+        if (!td.querySelector(".btt-content")) {
+          const content = document.createElement("span");
+          content.className = "btt-content";
+          while (td.firstChild) content.appendChild(td.firstChild);
+          td.appendChild(content);
+        }
+        const content = td.querySelector(".btt-content");
+        if (content && !content.hasAttribute("data-orig-html")) {
+          content.setAttribute("data-orig-html", content.innerHTML);
         }
       });
-    }
+    });
+  }
 
-    function isAnyChildRowVisible() {
-      return rows.some(
-        (tr) =>
-          isDataRow(tr) && getLevel(tr) > 0 && tr.dataset.visible === "true"
-      );
-    }
+  //  Restore original cell HTML
+  _restoreCellHtml(tr) {
+    Array.from(tr.cells).forEach((td) => {
+      const content = td.querySelector(".btt-content");
+      if (!content) return;
+      const orig = content.getAttribute("data-orig-html");
+      if (orig !== null) content.innerHTML = orig;
+    });
+  }
 
-    function updateToggleAllBtnIcon() {
-      const icon = document.getElementById("toggleAllIcon" + instanceId);
-      if (!icon) return;
-      const anyVisible = isAnyChildRowVisible();
-      updateFAIcon(
-        icon,
-        options.iconClasses.toggleAllOpen,
-        options.iconClasses.toggleAllClose,
-        anyVisible
-      );
-    }
+  //  Initialize default visibility
+  _initVisibility() {
+    this.rows.forEach((tr) => {
+      if (!this._isDataRow(tr)) return;
+      const isRoot = this._getLevel(tr) === 0;
+      const visible = this.options.startExpanded || isRoot;
+      this._setVisible(tr, visible);
+    });
+  }
 
-    function updateRowToggleIcon(btn, open) {
-      const icon = btn.querySelector("[data-fa-i2svg], i, svg");
-      if (!icon) return;
-      updateFAIcon(
-        icon,
-        options.iconClasses.toggleRowOpen,
-        options.iconClasses.toggleRowClose,
-        open
-      );
-    }
-
-    function updateAllToggleButtonStates() {
-      rows.forEach((tr, idx) => {
-        if (!isDataRow(tr)) return;
-        const btn = tr.querySelector(".toggle-row-btn");
-        if (!btn) return;
-        const thisLevel = getLevel(tr);
-        let hasVisibleChild = false;
-        for (let j = idx + 1; j < rows.length; j++) {
-          const nextTr = rows[j];
-          if (!isDataRow(nextTr)) continue;
-          const nextLevel = getLevel(nextTr);
-          if (nextLevel <= thisLevel) break;
-          if (
-            nextLevel === thisLevel + 1 &&
-            nextTr.dataset.visible === "true"
-          ) {
-            hasVisibleChild = true;
-            break;
-          }
+  //  Add row toggle buttons
+  _ensureToggleButtons() {
+    this.rows.forEach((tr, idx) => {
+      if (!this._isDataRow(tr)) return;
+      Array.from(tr.cells).forEach((td) => {
+        if (!td.querySelector(".btt-content")) {
+          const content = document.createElement("span");
+          content.className = "btt-content";
+          while (td.firstChild) content.appendChild(td.firstChild);
+          td.appendChild(content);
         }
-        btn.setAttribute("data-open", hasVisibleChild ? "true" : "false");
-        btn.classList.toggle("open", hasVisibleChild);
-        btn.setAttribute("aria-expanded", hasVisibleChild ? "true" : "false");
-        updateRowToggleIcon(btn, hasVisibleChild);
+        const content = td.querySelector(".btt-content");
+        if (content && !content.hasAttribute("data-orig-html")) {
+          content.setAttribute("data-orig-html", content.innerHTML);
+        }
       });
-    }
 
-    function setBranch(tr, open) {
-      const thisLevel = getLevel(tr);
-      let reached = false;
+      const thisLevel = this._getLevel(tr);
+      const next = this.rows[idx + 1];
+      if (!(next && this._getLevel(next) > thisLevel)) return;
 
-      for (const row of rows) {
-        if (row === tr) {
-          reached = true;
-          continue;
-        }
-        if (!reached || !isDataRow(row)) continue;
+      const td = tr.cells[this.options.toggleColumnIndex] || tr.cells[0];
+      if (!td || td.querySelector(".toggle-row-btn")) return;
 
-        const rowLevel = getLevel(row);
-        if (rowLevel <= thisLevel) break;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "btn toggle-row-btn " + (this.options.classes.toggleRowBtn || "");
+      btn.setAttribute("data-open", "false");
+      btn.setAttribute("aria-expanded", "false");
+      btn.setAttribute("aria-label", "Toggle row");
+      btn.innerHTML = `<i class="${this.options.iconClasses.toggleRowClose}"></i>`;
 
-        if (!open) {
-          setVisible(row, false);
-          const btnInRow = row.querySelector(".toggle-row-btn");
-          if (btnInRow) {
-            btnInRow.setAttribute("data-open", "false");
-            btnInRow.classList.remove("open");
-            btnInRow.setAttribute("aria-expanded", "false");
-          }
-        } else {
-          if (rowLevel === thisLevel + 1) setVisible(row, true);
-        }
-      }
+      const content = td.querySelector(".btt-content");
+      td.insertBefore(btn, content);
+      td.style.whiteSpace = "nowrap";
+      td.classList.add("btt-cell");
+    });
+  }
 
+  //  Check if any child rows are visible
+  _isAnyChildRowVisible() {
+    return this.rows.some(
+      (tr) =>
+        this._isDataRow(tr) &&
+        this._getLevel(tr) > 0 &&
+        tr.dataset.visible === "true"
+    );
+  }
+
+  //  Update toggle-all button icon
+  _updateToggleAllBtnIcon() {
+    if (!this.toggleAllBtn) return;
+    const anyVisible = this._isAnyChildRowVisible();
+    const nextClasses = anyVisible
+      ? this.options.iconClasses.toggleAllClose
+      : this.options.iconClasses.toggleAllOpen;
+    this.toggleAllBtn.innerHTML = `<i class="${nextClasses}"></i>`;
+  }
+
+  //  Update row toggle button icon
+  _updateRowToggleIcon(btn, open) {
+    if (!btn) return;
+    const nextClasses = open
+      ? this.options.iconClasses.toggleRowOpen
+      : this.options.iconClasses.toggleRowClose;
+    btn.innerHTML = `<i class="${nextClasses}"></i>`;
+  }
+
+  //  Refresh all row toggle states
+  _updateAllToggleButtonStates() {
+    this.rows.forEach((tr, idx) => {
+      if (!this._isDataRow(tr)) return;
       const btn = tr.querySelector(".toggle-row-btn");
-      if (btn) {
-        btn.setAttribute("data-open", open ? "true" : "false");
-        btn.classList.toggle("open", open);
-        btn.setAttribute("aria-expanded", open ? "true" : "false");
-        updateRowToggleIcon(btn, open);
-      }
-
-      updateAllToggleButtonStates();
-      updateToggleAllBtnIcon();
-      persistState();
-    }
-
-    function resetHighlight() {
-      rows.forEach((tr) => {
-        if (isDataRow(tr)) restoreCellHtml(tr);
-      });
-    }
-
-    function showParentChain(tr) {
-      let thisLevel = getLevel(tr);
-      let idx = rows.indexOf(tr);
-      for (let i = idx - 1; i >= 0; i--) {
-        let tr2 = rows[i];
-        if (!isDataRow(tr2)) continue;
-        let lvl = getLevel(tr2);
-        if (lvl < thisLevel) {
-          setVisible(tr2, true);
-          let btn = tr2.querySelector(".toggle-row-btn");
-          if (btn) {
-            btn.setAttribute("data-open", "true");
-            btn.classList.add("open");
-            btn.setAttribute("aria-expanded", "true");
-          }
-          thisLevel = lvl;
+      if (!btn) return;
+      const thisLevel = this._getLevel(tr);
+      let hasVisibleChild = false;
+      for (let j = idx + 1; j < this.rows.length; j++) {
+        const nextTr = this.rows[j];
+        if (!this._isDataRow(nextTr)) continue;
+        const nextLevel = this._getLevel(nextTr);
+        if (nextLevel <= thisLevel) break;
+        if (nextLevel === thisLevel + 1 && nextTr.dataset.visible === "true") {
+          hasVisibleChild = true;
+          break;
         }
-        if (lvl === 0) break;
       }
-    }
+      btn.setAttribute("data-open", hasVisibleChild ? "true" : "false");
+      btn.classList.toggle("open", hasVisibleChild);
+      btn.setAttribute("aria-expanded", hasVisibleChild ? "true" : "false");
+      this._updateRowToggleIcon(btn, hasVisibleChild);
+    });
+  }
 
-    function highlightHtml(html, query) {
-      if (!options.highlightSearchMatches || !query) return html;
-      const esc = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const re = new RegExp(esc(query), "ig");
-      return html.replace(
-        re,
-        (m) =>
-          `<mark style="background:${options.searchHighlightColor};padding:0 2px;border-radius:2px">${m}</mark>`
-      );
-    }
-
-    function performSearch(val) {
-      resetHighlight();
-      const q = val.trim();
-      const maxLevel =
-        typeof options.searchMaxLevel === "number"
-          ? options.searchMaxLevel
-          : null;
-
-      if (!q) {
-        rows.forEach((tr) => {
-          if (!isDataRow(tr)) return;
-          const isRoot = getLevel(tr) === 0;
-          const visible = options.startExpanded || isRoot;
-          setVisible(tr, visible);
-          const btn = tr.querySelector(".toggle-row-btn");
-          if (btn) {
-            const open = visible && !isRoot;
-            btn.setAttribute("data-open", open ? "true" : "false");
-            btn.classList.toggle("open", open);
-            btn.setAttribute("aria-expanded", open ? "true" : "false");
-          }
-        });
-        ensureToggleButtons();
-        updateAllToggleButtonStates();
-        updateToggleAllBtnIcon();
-        if (resetBtn) resetBtn.classList.add("d-none");
-        if (searchEmptyMsg) searchEmptyMsg.classList.add("d-none");
-        persistState();
-        return;
+  //  Expand or collapse a branch
+  _setBranch(tr, open) {
+    const thisLevel = this._getLevel(tr);
+    let reached = false;
+    for (const row of this.rows) {
+      if (row === tr) {
+        reached = true;
+        continue;
       }
-
-      let foundRows = [];
-      rows.forEach((tr) => {
-        if (!isDataRow(tr)) return;
-        const lvl = getLevel(tr);
-        if (maxLevel !== null && lvl > maxLevel) {
-          setVisible(tr, false);
-          return;
+      if (!reached || !this._isDataRow(row)) continue;
+      const rowLevel = this._getLevel(row);
+      if (rowLevel <= thisLevel) break;
+      if (!open) {
+        this._setVisible(row, false);
+        const btnInRow = row.querySelector(".toggle-row-btn");
+        if (btnInRow) {
+          btnInRow.setAttribute("data-open", "false");
+          btnInRow.classList.remove("open");
+          btnInRow.setAttribute("aria-expanded", "false");
+          this._updateRowToggleIcon(btnInRow, false);
         }
-        let hit = false;
-        Array.from(tr.cells).forEach((td) => {
-          const orig = td.getAttribute("data-orig-html") ?? td.innerHTML;
-          if (!orig) return;
-          const plain = td.textContent || "";
-          if (plain.toLowerCase().includes(q.toLowerCase())) {
-            td.innerHTML = highlightHtml(orig, q);
-            hit = true;
-          }
-        });
-        setVisible(tr, hit);
-        if (hit) foundRows.push(tr);
-      });
-
-      foundRows.forEach((tr) => showParentChain(tr));
-      ensureToggleButtons();
-      updateAllToggleButtonStates();
-      updateToggleAllBtnIcon();
-
-      const hasVisibleRow = rows.some(
-        (tr) => isDataRow(tr) && tr.dataset.visible === "true"
-      );
-      if (searchEmptyMsg) {
-        if (!hasVisibleRow) searchEmptyMsg.classList.remove("d-none");
-        else searchEmptyMsg.classList.add("d-none");
-      }
-      if (resetBtn) resetBtn.classList.remove("d-none");
-    }
-
-    function expandAll() {
-      rows.forEach((tr) => {
-        if (isDataRow(tr)) setVisible(tr, true);
-      });
-      updateAllToggleButtonStates();
-      updateToggleAllBtnIcon();
-      persistState();
-    }
-
-    function collapseAll() {
-      rows.forEach((tr) => {
-        if (!isDataRow(tr)) return;
-        const visible = getLevel(tr) === 0;
-        setVisible(tr, visible);
-        const btn = tr.querySelector(".toggle-row-btn");
-        if (btn) {
-          btn.setAttribute("data-open", "false");
-          btn.classList.remove("open");
-          btn.setAttribute("aria-expanded", "false");
-        }
-      });
-      updateAllToggleButtonStates();
-      updateToggleAllBtnIcon();
-      persistState();
-    }
-
-    function persistState() {
-      if (!options.rememberState) return;
-      const state = rows
-        .filter((tr) => isDataRow(tr))
-        .map((tr) => ({
-          idx: rows.indexOf(tr),
-          visible: tr.dataset.visible === "true",
-          open:
-            !!tr.querySelector(".toggle-row-btn") &&
-            tr.querySelector(".toggle-row-btn").classList.contains("open"),
-        }));
-      try {
-        localStorage.setItem(storageKey, JSON.stringify(state));
-      } catch (_) {}
-    }
-    function restoreState() {
-      if (!options.rememberState) return false;
-      try {
-        const raw = localStorage.getItem(storageKey);
-        if (!raw) return false;
-        const state = JSON.parse(raw);
-        if (!Array.isArray(state)) return false;
-        state.forEach((s) => {
-          const tr = rows[s.idx];
-          if (!tr || !isDataRow(tr)) return;
-          setVisible(tr, !!s.visible);
-          const btn = tr.querySelector(".toggle-row-btn");
-          if (btn) {
-            btn.classList.toggle("open", !!s.open);
-            btn.setAttribute("data-open", s.open ? "true" : "false");
-            btn.setAttribute("aria-expanded", s.open ? "true" : "false");
-          }
-        });
-        updateAllToggleButtonStates();
-        updateToggleAllBtnIcon();
-        return true;
-      } catch (_) {
-        return false;
+      } else {
+        if (rowLevel === thisLevel + 1) this._setVisible(row, true);
       }
     }
+    const btn = tr.querySelector(".toggle-row-btn");
+    if (btn) {
+      btn.setAttribute("data-open", open ? "true" : "false");
+      btn.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", open ? "true" : "false");
+      this._updateRowToggleIcon(btn, open);
+    }
+    this._updateAllToggleButtonStates();
+    this._updateToggleAllBtnIcon();
+    this._persistState();
+  }
 
-    // Initial HTML
-    cacheCellHtml();
-    rows.forEach((tr) => {
-      if (!isDataRow(tr)) return;
-      const isRoot = getLevel(tr) === 0;
-      const visible = options.startExpanded || isRoot;
-      setVisible(tr, visible);
+  //  Build search UI
+  _setupSearchUI() {
+    if (!this.options.searchContainerId) return;
+    const container = document.getElementById(this.options.searchContainerId);
+    if (!container) return;
+
+    const wrapper = document.createElement("div");
+    wrapper.className = this.options.classes.searchWrapper;
+    wrapper.style = this.options.classes.searchWrapperStyle;
+
+    const input = document.createElement("input");
+    input.type = "text";
+    input.className =
+      "form-control " + (this.options.classes.searchInput || "");
+    input.placeholder = this.options.i18n.searchPlaceholder;
+    input.setAttribute("aria-label", this.options.i18n.searchPlaceholder);
+    wrapper.appendChild(input);
+
+    const reset = document.createElement("button");
+    reset.type = "button";
+    reset.className = "btn " + this.options.classes.resetBtn;
+    reset.setAttribute("aria-label", this.options.i18n.searchResetAria);
+    reset.innerHTML = `<i class="${this.options.iconClasses.reset}"></i>`;
+    wrapper.appendChild(reset);
+
+    const noResults = document.createElement("div");
+    noResults.className =
+      "table-search-empty " + (this.options.classes.noResults || "");
+    noResults.textContent = this.options.i18n.noResults;
+    container.appendChild(wrapper);
+    container.appendChild(noResults);
+
+    this.searchInput = input;
+    this.resetBtn = reset;
+    this.noResultsDiv = noResults;
+
+    input.addEventListener("input", () => {
+      const term = input.value.trim().toLowerCase();
+      this._performSearch(term);
     });
 
-    ensureToggleButtons();
-    if (!restoreState()) {
-      updateAllToggleButtonStates();
-      updateToggleAllBtnIcon();
+    input.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        input.value = "";
+        this._performSearch("");
+        reset.classList.add("d-none");
+        noResults.classList.add("d-none");
+      }
+    });
+
+    reset.addEventListener("click", () => {
+      input.value = "";
+      this._performSearch("");
+      reset.classList.add("d-none");
+      noResults.classList.add("d-none");
+    });
+  }
+
+  //  Perform search
+  _performSearch(term) {
+    let matches = 0;
+    if (!term) {
+      if (
+        this.options.restorePreSearchStateOnClear &&
+        this._preSearchSnapshot
+      ) {
+        this._applyState(this._preSearchSnapshot);
+        this._preSearchSnapshot = null;
+      } else {
+        this._initVisibility();
+        this._ensureToggleButtons();
+        this._updateAllToggleButtonStates();
+        this._updateToggleAllBtnIcon();
+      }
+      this.noResultsDiv.classList.add("d-none");
+      this.resetBtn.classList.add("d-none");
+      return;
     }
 
-    // Delegated click handler
-    table.addEventListener("click", function (e) {
+    if (!this._hadSnapshotThisSearch) {
+      this._preSearchSnapshot = this._collectState();
+      this._hadSnapshotThisSearch = true;
+    }
+
+    this.rows.forEach((tr) => {
+      if (!this._isDataRow(tr)) return;
+      this._restoreCellHtml(tr);
+      if (!term) {
+        this._setVisible(tr, this._getLevel(tr) === 0);
+        return;
+      }
+      const html = tr.innerText.toLowerCase();
+      if (html.includes(term)) {
+        matches++;
+        this._setVisible(tr, true);
+        if (this.options.highlightSearchMatches) {
+          Array.from(tr.cells).forEach((td) => {
+            const content = td.querySelector(".btt-content");
+            if (!content) return;
+            const orig =
+              content.getAttribute("data-orig-html") ?? content.innerHTML;
+            const regex = new RegExp(`(${term})`, "gi");
+            content.innerHTML = orig.replace(
+              regex,
+              `<span style="background:${this.options.searchHighlightColor}">$1</span>`
+            );
+          });
+        }
+      } else {
+        this._setVisible(tr, false);
+      }
+    });
+
+    this._ensureToggleButtons();
+    this.resetBtn.classList.toggle("d-none", !term);
+    this.noResultsDiv.classList.toggle("d-none", matches > 0);
+    this._updateAllToggleButtonStates();
+    this._updateToggleAllBtnIcon();
+  }
+
+  //  Setup toggle-all button
+  _setupToggleAllBtn() {
+    if (!this.options.showToggleAllButton) return;
+    const th = this.table.querySelector("thead tr th");
+    if (!th) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "btn " + (this.options.classes.toggleAllBtn || "");
+    btn.title = this.options.i18n.toggleAllBtnTitle;
+    btn.innerHTML = `<i class="${this.options.iconClasses.toggleAllOpen}"></i>`;
+    th.appendChild(btn);
+    this.toggleAllBtn = btn;
+
+    btn.addEventListener("click", () => {
+      const anyVisible = this._isAnyChildRowVisible();
+      if (anyVisible) {
+        this.rows.forEach((tr) => {
+          if (this._isDataRow(tr) && this._getLevel(tr) > 0) {
+            this._setVisible(tr, false);
+          }
+        });
+      } else {
+        this.rows.forEach((tr) => {
+          if (this._isDataRow(tr)) this._setVisible(tr, true);
+        });
+      }
+      this._updateAllToggleButtonStates();
+      this._updateToggleAllBtnIcon();
+      this._persistState();
+    });
+  }
+
+  //  Setup row toggle click handler
+  _setupRowClickHandler() {
+    this.table.addEventListener("click", (e) => {
       const btn = e.target.closest(".toggle-row-btn");
       if (!btn) return;
       const tr = btn.closest("tr");
-      const open = btn.getAttribute("data-open") !== "true";
-      setBranch(tr, open);
+      const isOpen = btn.getAttribute("data-open") === "true";
+      this._setBranch(tr, !isOpen);
     });
+  }
 
-    // ToggleAllBtn listeners
-    if (toggleAllBtn) {
-      toggleAllBtn.addEventListener("click", function () {
-        if (searchInput && searchInput.value !== "") {
-          searchInput.value = "";
-          performSearch("");
-        }
-        if (isAnyChildRowVisible()) collapseAll();
-        else expandAll();
-      });
-    }
+  //  Collect current state snapshot
+  _collectState() {
+    return this.rows.map((tr) => ({
+      visible: tr.dataset.visible === "true",
+    }));
+  }
 
-    // SearchInput and resetBtn listeners
-    if (searchInput && resetBtn) {
-      searchInput.addEventListener(
-        "input",
-        debounce((e) => performSearch(e.target.value))
-      );
-      resetBtn.addEventListener("click", () => {
-        searchInput.value = "";
-        performSearch("");
-      });
+  //  Apply state snapshot
+  _applyState(state) {
+    if (!Array.isArray(state) || state.length !== this.rows.length) return;
+    state.forEach((s, idx) => {
+      const tr = this.rows[idx];
+      if (this._isDataRow(tr)) {
+        this._setVisible(tr, s.visible);
+      }
+    });
+    this._ensureToggleButtons();
+    this._updateAllToggleButtonStates();
+    this._updateToggleAllBtnIcon();
+  }
+
+  //  Save state to localStorage
+  _persistState() {
+    if (!this.options.rememberState) return;
+    try {
+      const state = this._collectState();
+      localStorage.setItem(this.storageKey, JSON.stringify(state));
+    } catch (e) {
+      console.warn("BootstrapTreeTable: Could not persist state.", e);
     }
   }
 
-  window.BootstrapTreeTable = { init };
-})(window);
+  //  Restore state from localStorage
+  _restoreState() {
+    if (!this.options.rememberState) return false;
+    try {
+      const str = localStorage.getItem(this.storageKey);
+      if (!str) return false;
+      const state = JSON.parse(str);
+      this._applyState(state);
+      return true;
+    } catch (e) {
+      console.warn("BootstrapTreeTable: Could not restore state.", e);
+      return false;
+    }
+  }
+}

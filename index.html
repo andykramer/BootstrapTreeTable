@@ -124,9 +124,9 @@
     <div class="container-fluid mt-5 mb-2">
       <h2>Tree Table Example 2</h2>
     </div>
-    <div class="container-fluid" id="suchfeld3"></div>
+    <div class="container-fluid" id="suchfeld2"></div>
     <div class="container-fluid">
-      <table class="table table-bordered" id="treeTable3">
+      <table class="table table-bordered" id="treeTable2">
         <thead class="table-light">
           <tr>
             <th style="width: 60px"></th>
@@ -206,44 +206,42 @@
     ></script>
     <script src="/script/BootstrapTreeTable.min.js"></script>
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        // Tabelle 1
-        BootstrapTreeTable.init({
-          tableSelectorId: "treeTable",
-          searchContainerId: "suchfeld",
-        });
-        // Tabelle 2
-        BootstrapTreeTable.init({
-          tableSelectorId: "treeTable3",
-          searchContainerId: "suchfeld3",
-          highlightSearchMatches: true,
-          searchHighlightColor: "#ffaaaa",
-          showToggleAllButton: true,
-          searchMaxLevel: 1,
-          i18n: {
-            searchPlaceholder: "Search up to 1 level...",
-            searchResetAria: "Reset",
-            toggleAllBtnTitle: "Expand/Collapse all",
-            noResults: "No results found",
-          },
-          classes: {
-            searchInput: "pe-5",
-            searchWrapper: "mb-3 position-relative",
-            searchWrapperStyle: "max-width:100%;",
-            resetBtn:
-              "btn-sm position-absolute top-50 end-0 translate-middle-y me-2 d-none",
-            noResults: "alert alert-warning small d-none mt-2",
-            toggleRowBtn: "btn-sm",
-            toggleAllBtn: "btn-sm",
-          },
-          iconClasses: {
-            toggleRowOpen: "fa-solid fa-circle-chevron-right fa-lg",
-            toggleRowClose: "fa-solid fa-circle-chevron-down fa-lg",
-            toggleAllOpen: "fa-solid fa-plus fa-fw",
-            toggleAllClose: "fa-solid fa-minus fa-fw",
-            reset: "fa-solid fa-xmark",
-          },
-        });
+      const tree = new BootstrapTreeTable("#treeTable", {
+        searchContainerId: "suchfeld",
+        restorePreSearchStateOnClear: true,
+      });
+
+      const tree2 = new BootstrapTreeTable("#treeTable2", {
+        searchContainerId: "suchfeld2",
+        highlightSearchMatches: true,
+        searchHighlightColor: "#ffaaaa",
+        showToggleAllButton: true,
+        searchMaxLevel: 2,
+        rememberState: true,
+        restorePreSearchStateOnClear: false,
+        i18n: {
+          searchPlaceholder: "Search up to 2 levels...",
+          searchResetAria: "Reset",
+          toggleAllBtnTitle: "Expand/Collapse all",
+          noResults: "No results found",
+        },
+        classes: {
+          searchInput: "pe-5",
+          searchWrapper: "mb-3 position-relative",
+          searchWrapperStyle: "max-width:100%;",
+          resetBtn:
+            "btn-sm position-absolute top-50 end-0 translate-middle-y me-2 d-none",
+          noResults: "alert alert-warning small d-none mt-2",
+          toggleRowBtn: "btn-sm",
+          toggleAllBtn: "btn-sm",
+        },
+        iconClasses: {
+          toggleRowOpen: "fa-solid fa-circle-chevron-right fa-lg",
+          toggleRowClose: "fa-solid fa-circle-chevron-down fa-lg",
+          toggleAllOpen: "fa-solid fa-plus fa-fw",
+          toggleAllClose: "fa-solid fa-minus fa-fw",
+          reset: "fa-solid fa-xmark",
+        },
       });
     </script>
   </body>
